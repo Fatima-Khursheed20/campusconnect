@@ -2,59 +2,59 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
-const { validationResult } = require("express-validator");
 const User = require("../models/User");
 
 const SALT_ROUNDS = 12;
-const JWT_EXPIRES_IN = "24h";
-const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
 
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: "lax",
-  secure: process.env.NODE_ENV === "production",
-  maxAge: COOKIE_MAX_AGE,
+// Centralized cookie options
+const getCookieOptions = (rememberMe = false) => {
+  const maxAge = rememberMe
+    ? 7 * 24 * 60 * 60 * 1000 // 7 days
+    : 24 * 60 * 60 * 1000; // 24 hours
+
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge,
+  };
 };
 
-const signToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-const sendValidationError = (res, errors) =>
-  res.status(400).json({
-    message: "Validation failed",
-    errors: errors.array(),
-  });
+const signToken = (userId, rememberMe = false) => {
+  const expiresIn = rememberMe ? "7d" : "24h";
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn });
+};
 
 const register = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return sendValidationError(res, errors);
-    }
-
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, companyName } = req.body;
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(409).json({ message: "Email is already registered" });
+      return res.status(409).json({
+        errors: [{ field: "email", message: "Email is already registered" }],
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const user = await User.create({
-      ...req.body,
+    const newUser = {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
       role: role || "student",
-    });
+    };
 
-    const token = signToken(user._id);
-    res.cookie("token", token, cookieOptions);
+    if (role === 'recruiter') {
+      newUser.companyName = companyName;
+    }
 
+    const user = await User.create(newUser);
+
+    // Do not automatically log in upon registration
     const safeUser = await User.findById(user._id).select("-password");
     return res.status(201).json({
-      message: "Registration successful",
+      message: "Registration successful. Please log in.",
       user: safeUser,
     });
   } catch (error) {
@@ -64,12 +64,7 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return sendValidationError(res, errors);
-    }
-
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     const user = await User.findOne({ email: email.toLowerCase() }).select(
       "+password"
@@ -84,7 +79,8 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, rememberMe);
+    const cookieOptions = getCookieOptions(rememberMe);
     res.cookie("token", token, cookieOptions);
 
     const safeUser = await User.findById(user._id).select("-password");
@@ -100,8 +96,8 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
   });
 
   return res.status(200).json({ message: "Logged out successfully" });
@@ -109,11 +105,6 @@ const logout = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return sendValidationError(res, errors);
-    }
-
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase() }).select(
       "+resetPasswordToken +resetPasswordExpires"
@@ -170,11 +161,6 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return sendValidationError(res, errors);
-    }
-
     const { token } = req.params;
     const { password } = req.body;
 

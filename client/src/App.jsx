@@ -27,16 +27,19 @@ import AdminSidebarLayout from "./components/admin/AdminSidebarLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageJobs from "./pages/admin/ManageJobs";
+import useIdleTimer from "./hooks/useIdleTimer";
 
 const fullBleedPaths = new Set(["/", "/about", "/contact"]);
 
 function AppContent() {
   const { pathname } = useLocation();
+  const { IdlePrompt } = useIdleTimer();
   const fullBleed = fullBleedPaths.has(pathname);
 
   return (
     <>
       <Navbar />
+      <IdlePrompt />
 
       <main
         className={
