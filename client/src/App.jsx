@@ -8,10 +8,11 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
-import StudentDashboard from "./pages/StudentDashboard";
-import StudentProfile from "./pages/student/StudentProfile";
-import StudentApplications from "./pages/student/StudentApplications";
-import StudentBookmarks from "./pages/student/StudentBookmarks";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import Profile from "./pages/student/Profile";
+import Applications from "./pages/student/Applications";
+import Bookmarks from "./pages/student/Bookmarks";
+import JobDetail from "./pages/JobDetail";
 import RecruiterDashboard from "./pages/RecruiterDashboard";
 import RecruiterJobs from "./pages/recruiter/RecruiterJobs";
 import NewJob from "./pages/recruiter/NewJob";
@@ -30,6 +31,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -38,9 +40,9 @@ function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
             <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/profile" element={<StudentProfile />} />
-            <Route path="/student/applications" element={<StudentApplications />} />
-            <Route path="/student/bookmarks" element={<StudentBookmarks />} />
+            <Route path="/student/profile" element={<Profile />} />
+            <Route path="/student/applications" element={<Applications />} />
+            <Route path="/student/bookmarks" element={<Bookmarks />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["recruiter"]} />}>

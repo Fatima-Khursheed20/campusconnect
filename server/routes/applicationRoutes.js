@@ -24,8 +24,17 @@ const applyValidation = [
   body("resumeUrl")
     .optional()
     .trim()
-    .isURL()
-    .withMessage("Resume URL must be a valid URL"),
+    .custom((value) => {
+      if (!value) return true;
+      if (value.startsWith("/uploads/")) return true;
+      try {
+        // eslint-disable-next-line no-new
+        new URL(value);
+        return true;
+      } catch {
+        throw new Error("Resume must be a valid URL or an uploaded file path");
+      }
+    }),
 ];
 
 router.post(
@@ -76,5 +85,13 @@ router.delete(
 );
 
 router.get("/my-bookmarks", verifyToken, checkRole(["student"]), getMyBookmarks);
+
+router.post(
+  "/:jobId",
+  verifyToken,
+  checkRole(["student"]),
+  [param("jobId").isMongoId().withMessage("Invalid job ID"), ...applyValidation],
+  applyForJob
+);
 
 module.exports = router;

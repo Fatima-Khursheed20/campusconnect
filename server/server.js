@@ -1,11 +1,15 @@
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
 const apiRoutes = require("./routes");
+const { ensureUploadDirs } = require("./utils/ensureUploadDirs");
 
 dotenv.config();
+
+ensureUploadDirs();
 
 const app = express();
 
@@ -17,6 +21,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "CampusConnect API is running." });

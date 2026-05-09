@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import useAuth from "../hooks/useAuth";
 import api from "../services/api";
 
 function JobDetail() {
@@ -36,19 +36,18 @@ function JobDetail() {
     if (!user || user.role !== "student") return;
 
     try {
-      // Check if user has applied
-      const applicationsResponse = await api.get("/applications/my-applications");
-      const hasApplied = applicationsResponse.data.applications.some(
-        (app) => app.job._id === id
+      const applicationsResponse = await api.get("/users/applications");
+      const sid = String(id);
+      const applied = applicationsResponse.data.applications.some(
+        (app) => String(app.job?._id) === sid
       );
-      setHasApplied(hasApplied);
+      setHasApplied(applied);
 
-      // Check if bookmarked
-      const bookmarksResponse = await api.get("/applications/my-bookmarks");
-      const isBookmarked = bookmarksResponse.data.bookmarks.some(
-        (bookmark) => bookmark.job._id === id
+      const bookmarksResponse = await api.get("/users/bookmarks");
+      const bookmarked = bookmarksResponse.data.bookmarks.some(
+        (bm) => String(bm.job?._id) === sid
       );
-      setIsBookmarked(isBookmarked);
+      setIsBookmarked(bookmarked);
     } catch (err) {
       // Ignore errors for these checks
     }
@@ -73,7 +72,7 @@ function JobDetail() {
 
     try {
       setApplying(true);
-      await api.post(`/applications/jobs/${id}/apply`, applicationData);
+      await api.post(`/applications/${id}`, applicationData);
       setHasApplied(true);
       setShowApplyModal(false);
       setApplicationData({ coverLetter: "", resumeUrl: "" });
@@ -91,13 +90,8 @@ function JobDetail() {
     }
 
     try {
-      if (isBookmarked) {
-        await api.delete(`/applications/jobs/${id}/bookmark`);
-        setIsBookmarked(false);
-      } else {
-        await api.post(`/applications/jobs/${id}/bookmark`);
-        setIsBookmarked(true);
-      }
+      const { data } = await api.post(`/bookmarks/${id}`);
+      setIsBookmarked(Boolean(data.bookmarked));
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update bookmark");
     }
@@ -377,13 +371,24 @@ function JobDetail() {
             ) : (
               <div className="text-center">
                 <button
-                  onClick={() => setShowApplyModal(true)}
-                  disabled={!job.isActive || new Date() > new Date(job.deadline)}
+                  type="button"
+                  onClick={() => {
+                    setApplicationData((prev) => ({
+                      ...prev,
+                      resumeUrl: user?.resumeUrl || "",
+                    }));
+                    setShowApplyModal(true);
+                  }}
+                  disabled={
+                    !job.isActive ||
+                    (job.deadline && new Date() > new Date(job.deadline))
+                  }
                   className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Apply Now
                 </button>
-                {(!job.isActive || new Date() > new Date(job.deadline)) && (
+                {(!job.isActive ||
+                  (job.deadline && new Date() > new Date(job.deadline))) && (
                   <p className="mt-2 text-sm text-gray-500">
                     {!job.isActive
                       ? "This position is no longer accepting applications."
@@ -444,10 +449,10 @@ function JobDetail() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">
-                              Resume URL (Optional)
+                              Resume URL or uploaded path (optional)
                             </label>
                             <input
-                              type="url"
+                              type="text"
                               value={applicationData.resumeUrl}
                               onChange={(e) =>
                                 setApplicationData((prev) => ({
@@ -455,7 +460,7 @@ function JobDetail() {
                                   resumeUrl: e.target.value,
                                 }))
                               }
-                              placeholder="https://example.com/resume.pdf"
+                              placeholder="Pre-filled from your profile upload, or paste a URL"
                               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>

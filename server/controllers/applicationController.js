@@ -21,7 +21,8 @@ const applyForJob = async (req, res) => {
       return res.status(403).json({ message: "Only students can apply for jobs" });
     }
 
-    const job = await Job.findById(req.params.id);
+    const jobId = req.params.jobId || req.params.id;
+    const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
@@ -30,13 +31,13 @@ const applyForJob = async (req, res) => {
       return res.status(400).json({ message: "This job is no longer accepting applications" });
     }
 
-    if (new Date() > job.deadline) {
+    if (job.deadline && new Date() > new Date(job.deadline)) {
       return res.status(400).json({ message: "Application deadline has passed" });
     }
 
     // Check if already applied
     const existingApplication = await Application.findOne({
-      job: req.params.id,
+      job: jobId,
       applicant: req.user._id,
     });
 
@@ -45,7 +46,7 @@ const applyForJob = async (req, res) => {
     }
 
     const application = await Application.create({
-      job: req.params.id,
+      job: jobId,
       applicant: req.user._id,
       ...req.body,
     });
@@ -130,7 +131,7 @@ const getMyApplications = async (req, res) => {
     const applications = await Application.find({ applicant: req.user._id })
       .populate({
         path: "job",
-        select: "title company location type salary deadline isActive",
+        select: "title location type salary deadline isActive",
         populate: {
           path: "postedBy",
           select: "name companyName",
@@ -216,7 +217,7 @@ const getMyBookmarks = async (req, res) => {
     const bookmarks = await Bookmark.find({ user: req.user._id })
       .populate({
         path: "job",
-        select: "title company location type salary deadline isActive",
+        select: "title location type salary deadline isActive",
         populate: {
           path: "postedBy",
           select: "name companyName",
