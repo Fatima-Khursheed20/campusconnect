@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../services/api";
+import { getTypeBadgeClasses } from "../utils/jobDisplay";
 
 function JobsPage() {
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,6 +19,18 @@ function JobsPage() {
     total: 0,
     totalPages: 0,
   });
+
+  useEffect(() => {
+    const loc = searchParams.get("location");
+    const q = searchParams.get("search");
+    if (loc !== null || q !== null) {
+      setFilters((prev) => ({
+        ...prev,
+        ...(loc !== null ? { location: loc } : {}),
+        ...(q !== null ? { search: q } : {}),
+      }));
+    }
+  }, [searchParams]);
 
   const fetchJobs = async (page = 1) => {
     try {
@@ -52,19 +66,6 @@ function JobsPage() {
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
     fetchJobs(newPage);
-  };
-
-  const getTypeBadgeColor = (type) => {
-    switch (type) {
-      case "internship":
-        return "bg-blue-100 text-blue-800";
-      case "full-time":
-        return "bg-green-100 text-green-800";
-      case "part-time":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
   };
 
   const formatDate = (dateString) => {
@@ -215,7 +216,7 @@ function JobsPage() {
 
                     <div className="flex items-center justify-between">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeBadgeColor(
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeBadgeClasses(
                           job.type
                         )}`}
                       >

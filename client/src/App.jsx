@@ -1,11 +1,11 @@
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import JobsPage from "./pages/JobsPage";
-import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -28,18 +28,29 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageJobs from "./pages/admin/ManageJobs";
 
-function App() {
+const fullBleedPaths = new Set(["/", "/about", "/contact"]);
+
+function AppContent() {
+  const { pathname } = useLocation();
+  const fullBleed = fullBleedPaths.has(pathname);
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <>
       <Navbar />
 
-      <main className="mx-auto w-full flex-1 max-w-6xl px-4 py-8">
+      <main
+        className={
+          fullBleed
+            ? "mx-auto w-full flex-1 max-w-none px-0 py-0"
+            : "mx-auto w-full flex-1 max-w-6xl px-4 py-8"
+        }
+      >
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/login" element={<Login />} />
@@ -84,6 +95,14 @@ function App() {
       </main>
 
       <Footer />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <AppContent />
     </div>
   );
 }

@@ -5,6 +5,7 @@ const jobRoutes = require("./jobRoutes");
 const applicationRoutes = require("./applicationRoutes");
 const userRoutes = require("./userRoutes");
 const bookmarkRoutes = require("./bookmarkRoutes");
+const contactRoutes = require("./contactRoutes");
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use("/jobs", jobRoutes);
 router.use("/applications", applicationRoutes);
 router.use("/users", userRoutes);
 router.use("/bookmarks", bookmarkRoutes);
+router.use("/contact", contactRoutes);
 
 module.exports = router;
