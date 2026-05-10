@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../services/api";
+import { resolveUploadUrl } from "../../utils/resolveUploadUrl";
 
 function JobApplicants() {
   const { id } = useParams();
@@ -224,7 +225,7 @@ function JobApplicants() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {application.resumeUrl ? (
                             <a
-                              href={application.resumeUrl}
+                              href={resolveUploadUrl(application.resumeUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:text-blue-900"

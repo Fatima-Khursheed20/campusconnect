@@ -36,6 +36,7 @@ const sessionCheck = (req, res, next) => {
       const newToken = signToken(decoded.id, rememberMe);
       const cookieOptions = getCookieOptions(rememberMe);
       res.cookie('token', newToken, cookieOptions);
+      req.cookies.token = newToken;
     }
   } catch (error) {
     // If token is invalid, just proceed. The verifyToken middleware will catch it.

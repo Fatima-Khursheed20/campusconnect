@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import useAuth from "../../hooks/useAuth";
 import { resolveUploadUrl } from "../../utils/resolveUploadUrl";
+import LazyImage from "../../components/common/LazyImage";
 
 function normalizeEducation(eduList) {
   if (!eduList?.length) {
@@ -174,9 +175,9 @@ function Profile() {
         <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <div className="h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
             {user?.profilePicture ? (
-              <img
+              <LazyImage
                 src={resolveUploadUrl(user.profilePicture)}
-                alt=""
+                alt="Profile"
                 className="h-full w-full object-cover"
               />
             ) : (

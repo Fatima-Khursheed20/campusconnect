@@ -31,7 +31,9 @@ const applicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for performance
 applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
+applicationSchema.index({ applicant: 1, status: 1 });
 
 const Application = mongoose.model("Application", applicationSchema);
 

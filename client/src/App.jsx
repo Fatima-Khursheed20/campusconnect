@@ -2,6 +2,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 import HomePage from "./pages/HomePage";
 import JobsPage from "./pages/JobsPage";
 import About from "./pages/About";
@@ -14,31 +15,37 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
+
 import StudentDashboard from "./pages/student/StudentDashboard";
 import Profile from "./pages/student/Profile";
 import Applications from "./pages/student/Applications";
 import Bookmarks from "./pages/student/Bookmarks";
+
 import JobDetail from "./pages/JobDetail";
+
 import RecruiterDashboard from "./pages/RecruiterDashboard";
 import RecruiterJobs from "./pages/recruiter/RecruiterJobs";
 import NewJob from "./pages/recruiter/NewJob";
 import JobApplicants from "./pages/recruiter/JobApplicants";
+
 import AdminSidebarLayout from "./components/admin/AdminSidebarLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageJobs from "./pages/admin/ManageJobs";
-import useIdleTimer from "./hooks/useIdleTimer";
+
+import IdlePrompt from "./components/IdlePrompt"; // ✅ correct
 
 const fullBleedPaths = new Set(["/", "/about", "/contact"]);
 
 function AppContent() {
   const { pathname } = useLocation();
-  const { IdlePrompt } = useIdleTimer();
   const fullBleed = fullBleedPaths.has(pathname);
 
   return (
     <>
       <Navbar />
+
+      {/* ✅ Idle system runs globally */}
       <IdlePrompt />
 
       <main
@@ -79,10 +86,7 @@ function AppContent() {
             <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
             <Route path="/recruiter/jobs" element={<RecruiterJobs />} />
             <Route path="/recruiter/jobs/new" element={<NewJob />} />
-            <Route
-              path="/recruiter/jobs/:id/applicants"
-              element={<JobApplicants />}
-            />
+            <Route path="/recruiter/jobs/:id/applicants" element={<JobApplicants />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
