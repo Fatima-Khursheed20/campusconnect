@@ -1,5 +1,47 @@
 const mongoose = require("mongoose");
 
+function stripEnvQuotes(s) {
+  let x = String(s ?? "").trim();
+  if (
+    (x.startsWith('"') && x.endsWith('"')) ||
+    (x.startsWith("'") && x.endsWith("'"))
+  ) {
+    x = x.slice(1, -1).trim();
+  }
+  return x;
+}
+
+/**
+ * Build SRV URI with proper encoding (avoids broken single-line MONGO_URI on Vercel).
+ * Set MONGO_HOST (e.g. cluster0.xxxxx.mongodb.net), MONGO_USER, MONGO_PASSWORD.
+ * Optional: MONGO_DB (default campusconnect)
+ */
+function buildMongoUriFromParts() {
+  const hostRaw = stripEnvQuotes(process.env.MONGO_HOST || "");
+  const userRaw = stripEnvQuotes(process.env.MONGO_USER || "");
+  const passRaw = process.env.MONGO_PASSWORD;
+
+  if (!hostRaw || !userRaw || passRaw === undefined || passRaw === null) {
+    return null;
+  }
+  const pass = String(passRaw);
+  if (pass === "") {
+    return null;
+  }
+
+  let host = hostRaw.replace(/^mongodb\+srv:\/\//i, "").trim();
+  host = host.split("/")[0].split("?")[0].trim();
+
+  const db =
+    stripEnvQuotes(process.env.MONGO_DB || "campusconnect").replace(/^\//, "") ||
+    "campusconnect";
+
+  const encUser = encodeURIComponent(userRaw);
+  const encPass = encodeURIComponent(pass);
+
+  return `mongodb+srv://${encUser}:${encPass}@${host}/${db}?retryWrites=true&w=majority&authSource=admin`;
+}
+
 const getMongoUri = () => {
   const mongo = process.env.MONGO_URI;
   const mongodb = process.env.MONGODB_URI;
@@ -8,14 +50,22 @@ const getMongoUri = () => {
       "[db] Both MONGO_URI and MONGODB_URI are set; using MONGO_URI only. Delete the unused variable in Vercel to avoid an old string winning by mistake."
     );
   }
-  let s = mongo || mongodb || "";
-  s = String(s).trim();
-  if (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith("'") && s.endsWith("'"))
-  ) {
-    s = s.slice(1, -1).trim();
+
+  let s = stripEnvQuotes(mongo || mongodb || "");
+  const built = buildMongoUriFromParts();
+
+  if (built && s) {
+    console.warn(
+      "[db] MONGO_URI is set and split vars (MONGO_HOST/USER/PASSWORD) exist — using MONGO_URI. Clear MONGO_URI to use split credentials."
+    );
   }
+  if (!s && built) {
+    console.log(
+      "[db] Using MONGO_HOST + MONGO_USER + MONGO_PASSWORD (no MONGO_URI)."
+    );
+    s = built;
+  }
+
   return s;
 };
 
@@ -99,8 +149,12 @@ function registerListenersOnce() {
 const connectDB = async () => {
   const raw = getMongoUri();
   if (!raw) {
-    console.error("MongoDB: set MONGO_URI or MONGODB_URI in environment");
-    throw new Error("Missing MONGO_URI / MONGODB_URI");
+    console.error(
+      "MongoDB: set MONGO_URI (or MONGODB_URI), or MONGO_HOST + MONGO_USER + MONGO_PASSWORD"
+    );
+    throw new Error(
+      "Missing MONGO_URI / MONGODB_URI / or split MONGO_HOST+MONGO_USER+MONGO_PASSWORD"
+    );
   }
   const uri = normalizeMongoUri(raw);
   registerListenersOnce();
@@ -129,7 +183,9 @@ const ensureDbConnected = async () => {
   }
   const raw = getMongoUri();
   if (!raw) {
-    throw new Error("Missing MONGO_URI / MONGODB_URI");
+    throw new Error(
+      "Missing MONGO_URI / MONGODB_URI / or split MONGO_HOST+MONGO_USER+MONGO_PASSWORD"
+    );
   }
   const uri = normalizeMongoUri(raw);
   registerListenersOnce();
