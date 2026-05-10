@@ -1,10 +1,11 @@
 import axios from "axios";
 import { addCsrfToHeaders } from "../utils/csrf";
+import { getConfiguredApiBaseUrl } from "../utils/apiBaseUrl";
 
 const resolveBaseURL = () => {
-  const fromEnv = import.meta.env.VITE_API_URL;
-  if (fromEnv && String(fromEnv).trim()) {
-    return String(fromEnv).trim();
+  const normalized = getConfiguredApiBaseUrl();
+  if (normalized) {
+    return normalized;
   }
   // Dev: use Vite proxy (see vite.config.js) so requests stay on the page origin (no CORS)
   if (import.meta.env.DEV) {

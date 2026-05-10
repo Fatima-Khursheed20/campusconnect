@@ -1,3 +1,5 @@
+import { getConfiguredApiBaseUrl } from "./apiBaseUrl";
+
 /**
  * Turn a stored path like "/uploads/resumes/foo.pdf" into a full browser URL for the API host.
  */
@@ -9,11 +11,12 @@ export function resolveUploadUrl(storedPath) {
     return storedPath;
   }
   const pathPart = storedPath.startsWith("/") ? storedPath : `/${storedPath}`;
+  const configured = getConfiguredApiBaseUrl();
   // Dev + default api: Vite proxies /uploads to the API (see vite.config.js)
-  if (import.meta.env.DEV && !(import.meta.env.VITE_API_URL || "").trim()) {
+  if (import.meta.env.DEV && !configured) {
     return pathPart;
   }
-  const rawBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  const rawBase = configured || "http://localhost:5000/api";
   const base = rawBase.replace(/\/?api\/?$/i, "");
   return `${base}${pathPart}`;
 }
