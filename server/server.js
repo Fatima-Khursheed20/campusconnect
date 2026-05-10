@@ -169,10 +169,21 @@ app.use(async (req, res, next) => {
     return next();
   } catch (err) {
     console.error("[db] ensureDbConnected:", err.message);
-    return res.status(503).json({
-      message:
-        "Database unavailable. Set MONGO_URI on Vercel and allow Atlas access from 0.0.0.0/0.",
-    });
+    const missing =
+      /missing mongo_uri/i.test(String(err.message)) ||
+      String(err.message).includes("Missing MONGO_URI");
+
+    const payload = {
+      message: missing
+        ? "MONGO_URI is missing. In Vercel open your API project (not the frontend) → Settings → Environment Variables → add MONGO_URI (or MONGODB_URI) with your Atlas connection string, then Redeploy."
+        : "Cannot connect to MongoDB. Check the connection string and password (URL-encode special characters in the password). In Atlas: Network Access → allow 0.0.0.0/0 (or Vercel IPs). Database user must exist.",
+    };
+
+    if (process.env.NODE_ENV !== "production" || process.env.SHOW_DB_ERRORS === "true") {
+      payload.detail = err.message;
+    }
+
+    return res.status(503).json(payload);
   }
 });
 

@@ -1,7 +1,16 @@
 const mongoose = require("mongoose");
 
-const getMongoUri = () =>
-  process.env.MONGO_URI || process.env.MONGODB_URI;
+const getMongoUri = () => {
+  let s = process.env.MONGO_URI || process.env.MONGODB_URI || "";
+  s = String(s).trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+};
 
 const connectOptions = () => ({
   serverSelectionTimeoutMS: process.env.VERCEL ? 15000 : 5000,
