@@ -2,6 +2,8 @@ const User = require("../models/User");
 const Job = require("../models/Job");
 const Application = require("../models/Application");
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const getStats = async (req, res) => {
   try {
     const [totalUsers, totalJobs, totalApplications, activeRecruiters] =
@@ -44,10 +46,12 @@ const getUsers = async (req, res) => {
     const { search = "" } = req.query;
     const query = {};
 
-    if (search.trim()) {
+    const term = search.trim().slice(0, 100);
+    if (term) {
+      const safe = escapeRegex(term);
       query.$or = [
-        { name: { $regex: search.trim(), $options: "i" } },
-        { email: { $regex: search.trim(), $options: "i" } },
+        { name: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
       ];
     }
 

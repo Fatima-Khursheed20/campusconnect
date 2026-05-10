@@ -37,13 +37,21 @@ function ManageJobs() {
   }, []);
 
   const toggleJob = async (id) => {
-    await api.patch(`/admin/jobs/${id}/toggle`);
-    fetchJobs();
+    try {
+      await api.patch(`/admin/jobs/${id}/toggle`);
+      fetchJobs();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to toggle job status");
+    }
   };
 
   const deleteJob = async (id) => {
-    await api.delete(`/admin/jobs/${id}`);
-    fetchJobs();
+    try {
+      await api.delete(`/admin/jobs/${id}`);
+      fetchJobs();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete job");
+    }
   };
 
   return (

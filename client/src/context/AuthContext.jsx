@@ -1,24 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import { initializeCsrfProtection } from "../utils/csrf";
 import AuthContext from "./authContextInstance";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    
     const restoreSession = async () => {
       try {
+        // Initialize CSRF protection
+        await initializeCsrfProtection();
+        
         const response = await api.get("/auth/me");
-        setUser(response.data.user || null);
+        if (!cancelled) {
+          setUser(response.data.user || null);
+        }
       } catch {
-        setUser(null);
+        if (!cancelled) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setInitialized(true);
+        }
       }
     };
 
     restoreSession();
+    
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (payload) => {
@@ -41,13 +59,14 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      initialized,
       isAuthenticated: Boolean(user),
       login,
       logout,
       register,
       setUser,
     }),
-    [user, loading]
+    [user, loading, initialized]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,8 @@
 const { validationResult } = require("express-validator");
 const Job = require("../models/Job");
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const sendValidationError = (res, errors) =>
   res.status(400).json({
     message: "Validation failed",
@@ -53,9 +55,10 @@ const getAllJobs = async (req, res) => {
     const query = { isActive: true };
 
     if (search.trim()) {
+      const term = escapeRegex(search.trim().slice(0, 200));
       query.$or = [
-        { title: { $regex: search.trim(), $options: "i" } },
-        { description: { $regex: search.trim(), $options: "i" } },
+        { title: { $regex: term, $options: "i" } },
+        { description: { $regex: term, $options: "i" } },
       ];
     }
 
@@ -64,7 +67,10 @@ const getAllJobs = async (req, res) => {
     }
 
     if (location) {
-      query.location = { $regex: location.trim(), $options: "i" };
+      query.location = {
+        $regex: escapeRegex(location.trim().slice(0, 120)),
+        $options: "i",
+      };
     }
 
     const [jobs, total] = await Promise.all([
@@ -128,7 +134,10 @@ const updateJob = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this job" });
     }
 
-    Object.assign(job, req.body);
+    const allowed = ["title", "description", "requirements", "type", "location", "salary", "deadline", "isActive"];
+    allowed.forEach((field) => {
+      if (req.body[field] !== undefined) job[field] = req.body[field];
+    });
     await job.save();
 
     return res.status(200).json({

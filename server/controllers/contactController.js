@@ -25,6 +25,7 @@ const submitContactMessage = async (req, res) => {
       message: "Thank you! Your message has been received and we will get back to you soon.",
     });
   } catch (error) {
+    console.error("[CampusConnect] Contact form error:", error);
     return res.status(500).json({ message: "Unable to deliver your message right now." });
   }
 };

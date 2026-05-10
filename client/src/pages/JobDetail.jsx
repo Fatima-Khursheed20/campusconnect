@@ -19,48 +19,61 @@ function JobDetail() {
     resumeUrl: "",
   });
 
-  const fetchJob = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/jobs/${id}`);
-      setJob(response.data.job);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch job details");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkApplicationStatus = async () => {
-    if (!user || user.role !== "student") return;
-
-    try {
-      const applicationsResponse = await api.get("/users/applications");
-      const sid = String(id);
-      const applied = applicationsResponse.data.applications.some(
-        (app) => String(app.job?._id) === sid
-      );
-      setHasApplied(applied);
-
-      const bookmarksResponse = await api.get("/users/bookmarks");
-      const bookmarked = bookmarksResponse.data.bookmarks.some(
-        (bm) => String(bm.job?._id) === sid
-      );
-      setIsBookmarked(bookmarked);
-    } catch (err) {
-      // Ignore errors for these checks
-    }
-  };
-
   useEffect(() => {
-    fetchJob();
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          setLoading(true);
+          const response = await api.get(`/jobs/${id}`);
+          if (cancelled) return;
+          setJob(response.data.job);
+          setError(null);
+        } catch (err) {
+          if (!cancelled) {
+            setError(err.response?.data?.message || "Failed to fetch job details");
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [id]);
 
   useEffect(() => {
-    if (user) {
-      checkApplicationStatus();
-    }
+    if (!user) return undefined;
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        if (!user || user.role !== "student") return;
+        try {
+          const applicationsResponse = await api.get("/users/applications");
+          if (cancelled) return;
+          const sid = String(id);
+          const applied = applicationsResponse.data.applications.some(
+            (app) => String(app.job?._id) === sid
+          );
+          setHasApplied(applied);
+
+          const bookmarksResponse = await api.get("/users/bookmarks");
+          if (cancelled) return;
+          const bookmarked = bookmarksResponse.data.bookmarks.some(
+            (bm) => String(bm.job?._id) === sid
+          );
+          setIsBookmarked(bookmarked);
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [user, id]);
 
   const handleApply = async (e) => {

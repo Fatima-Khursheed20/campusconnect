@@ -8,8 +8,12 @@ export function resolveUploadUrl(storedPath) {
   if (storedPath.startsWith("http://") || storedPath.startsWith("https://")) {
     return storedPath;
   }
+  const pathPart = storedPath.startsWith("/") ? storedPath : `/${storedPath}`;
+  // Dev + default api: Vite proxies /uploads to the API (see vite.config.js)
+  if (import.meta.env.DEV && !(import.meta.env.VITE_API_URL || "").trim()) {
+    return pathPart;
+  }
   const rawBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
   const base = rawBase.replace(/\/?api\/?$/i, "");
-  const pathPart = storedPath.startsWith("/") ? storedPath : `/${storedPath}`;
   return `${base}${pathPart}`;
 }

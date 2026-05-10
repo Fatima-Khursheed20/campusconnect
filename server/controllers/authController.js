@@ -1,21 +1,21 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
 const User = require("../models/User");
 
 const SALT_ROUNDS = 12;
 
 // Centralized cookie options
 const getCookieOptions = (rememberMe = false) => {
+  const isProduction = process.env.NODE_ENV === "production";
   const maxAge = rememberMe
     ? 7 * 24 * 60 * 60 * 1000 // 7 days
     : 24 * 60 * 60 * 1000; // 24 hours
 
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge,
   };
 };
@@ -58,7 +58,8 @@ const register = async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    console.error("[auth] register:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -89,7 +90,8 @@ const login = async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    console.error("[auth] login:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -97,7 +99,7 @@ const logout = async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   });
 
   return res.status(200).json({ message: "Logged out successfully" });
@@ -127,35 +129,19 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
     await user.save();
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER || "your_email@gmail.com",
-        pass: process.env.GMAIL_APP_PASSWORD || "your_gmail_app_password",
-      },
-    });
-
-    const mailOptions = {
-      from: process.env.GMAIL_USER || "your_email@gmail.com",
-      to: user.email,
-      subject: "CampusConnect Password Reset",
-      text: `Reset your password using this link: ${resetUrl}. It expires in 1 hour.`,
-    };
-
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      console.log("Email credentials not configured. Reset URL:", resetUrl);
-      return res.status(200).json({
-        message: "Reset token generated. Configure email credentials to send mail.",
-      });
+    if (process.env.NODE_ENV !== "production" && process.env.DEBUG_PASSWORD_RESET === "true") {
+      console.log(
+        "[auth] Password reset token issued (enable only locally):",
+        `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${resetToken}`
+      );
     }
 
-    await transporter.sendMail(mailOptions);
     return res.status(200).json({
       message: "If the email exists, a password reset link has been sent.",
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    console.error("[auth] forgotPassword:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -206,7 +192,8 @@ const resetPassword = async (req, res) => {
 
     return res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    console.error("[auth] resetPassword:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 

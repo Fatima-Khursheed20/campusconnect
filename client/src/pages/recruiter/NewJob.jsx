@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
@@ -23,7 +23,7 @@ function JobForm() {
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
 
-  const fetchJob = async () => {
+  const fetchJob = useCallback(async () => {
     try {
       setFetchLoading(true);
       const response = await api.get(`/jobs/${id}`);
@@ -44,13 +44,15 @@ function JobForm() {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    if (isEditing) {
-      fetchJob();
-    }
-  }, [id, isEditing]);
+    if (!isEditing) return undefined;
+    const t = window.setTimeout(() => {
+      void fetchJob();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [fetchJob, isEditing]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

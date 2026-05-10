@@ -60,13 +60,25 @@ export default function HomePage() {
     (async () => {
       try {
         setFeaturedLoading(true);
+        console.log('Fetching featured jobs...');
         const { data } = await api.get("/jobs?page=1&limit=6");
+        console.log('Featured jobs response:', data);
         if (!cancelled) {
           setFeatured(data.jobs || []);
           setFeaturedError(null);
+          console.log(`Loaded ${data.jobs?.length || 0} featured jobs`);
         }
       } catch (e) {
-        if (!cancelled) setFeaturedError(e.response?.data?.message || "Could not load featured jobs");
+        console.error('Error fetching featured jobs:', e);
+        if (!cancelled) {
+          const errorMessage = e.response?.data?.message || e.message || "Could not load featured jobs";
+          setFeaturedError(errorMessage);
+          console.log('Error details:', {
+            status: e.response?.status,
+            statusText: e.response?.statusText,
+            data: e.response?.data
+          });
+        }
       } finally {
         if (!cancelled) setFeaturedLoading(false);
       }

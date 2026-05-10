@@ -55,18 +55,30 @@ function ManageUsers() {
   };
 
   const handleToggleStatus = async (id) => {
-    await api.patch(`/admin/users/${id}/toggle-status`);
-    fetchUsers(searchTerm.trim());
+    try {
+      await api.patch(`/admin/users/${id}/toggle-status`);
+      fetchUsers(searchTerm.trim());
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update user status");
+    }
   };
 
   const handleRoleChange = async (id, role) => {
-    await api.patch(`/admin/users/${id}/role`, { role });
-    fetchUsers(searchTerm.trim());
+    try {
+      await api.patch(`/admin/users/${id}/role`, { role });
+      fetchUsers(searchTerm.trim());
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update user role");
+    }
   };
 
   const handleDelete = async (id) => {
-    await api.delete(`/admin/users/${id}`);
-    fetchUsers(searchTerm.trim());
+    try {
+      await api.delete(`/admin/users/${id}`);
+      fetchUsers(searchTerm.trim());
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete user");
+    }
   };
 
   return (

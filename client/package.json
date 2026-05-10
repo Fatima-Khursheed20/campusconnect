@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "axios": "^1.16.0",
+    "dompurify": "^3.0.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-lazy-load-image-component": "^1.6.3",
     "react-router-dom": "^7.15.0"
   },
   "devDependencies": {

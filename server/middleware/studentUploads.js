@@ -2,8 +2,17 @@ const path = require("path");
 const multer = require("multer");
 const { resumeDir, profilePictureDir } = require("../utils/ensureUploadDirs");
 
-const sanitizeFilename = (original) =>
-  original.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+const sanitizeFilename = (original) => {
+  if (!original) return "file";
+  
+  // Check if filename is too long before processing
+  if (original.length > 200) {
+    throw new Error("Filename too long. Maximum 200 characters allowed.");
+  }
+  
+  // Sanitize and limit to 180 characters
+  return original.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+};
 
 const resumeStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -36,6 +45,19 @@ const resumeUpload = multer({
   },
 });
 
+const withResumeUpload = (req, res, next) => {
+  resumeUpload.single("resume")(req, res, (err) => {
+    if (err) {
+      let message = "Resume upload failed";
+      if (err.message) {
+        message = err.message.includes("Filename too long") ? err.message : message;
+      }
+      return res.status(400).json({ message });
+    }
+    return next();
+  });
+};
+
 const profilePictureUpload = multer({
   storage: profilePictureStorage,
   limits: { fileSize: 2 * 1024 * 1024 },
@@ -47,7 +69,22 @@ const profilePictureUpload = multer({
   },
 });
 
+const withProfilePictureUpload = (req, res, next) => {
+  profilePictureUpload.single("profilePicture")(req, res, (err) => {
+    if (err) {
+      let message = "Profile picture upload failed";
+      if (err.message) {
+        message = err.message.includes("Filename too long") ? err.message : message;
+      }
+      return res.status(400).json({ message });
+    }
+    return next();
+  });
+};
+
 module.exports = {
   resumeUpload,
   profilePictureUpload,
+  withResumeUpload,
+  withProfilePictureUpload,
 };

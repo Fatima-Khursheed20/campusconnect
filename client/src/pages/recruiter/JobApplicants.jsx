@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../services/api";
 import { resolveUploadUrl } from "../../utils/resolveUploadUrl";
@@ -11,7 +11,7 @@ function JobApplicants() {
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -29,11 +29,14 @@ function JobApplicants() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    fetchData();
-  }, [id]);
+    const t = window.setTimeout(() => {
+      void fetchData();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [fetchData]);
 
   const handleStatusChange = async (applicationId, newStatus) => {
     try {

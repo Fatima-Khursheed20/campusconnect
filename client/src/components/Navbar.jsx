@@ -49,8 +49,11 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setMobileOpen(false);
-    setAvatarOpen(false);
+    const t = window.setTimeout(() => {
+      setMobileOpen(false);
+      setAvatarOpen(false);
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -79,9 +82,6 @@ export default function Navbar() {
   const avatarSrc = resolveUploadUrl(user?.profilePicture);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() || "?";
 
-  const inactiveDesktop =
-    "!text-slate-700 font-medium hover:text-blue-600 data-[active=true]:text-blue-600 data-[active=true]:font-semibold";
-
   return (
     <header
       className={`sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur transition-shadow duration-200 ${
@@ -90,7 +90,10 @@ export default function Navbar() {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link
-          to="/"
+          to={user && isAuthenticated ? 
+            (user.role === 'student' ? '/student/dashboard' : 
+             user.role === 'recruiter' ? '/recruiter/dashboard' : 
+             user.role === 'admin' ? '/admin' : '/') : '/'}
           className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-slate-900"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
@@ -165,13 +168,12 @@ export default function Navbar() {
             {!loading && user?.role === "student" && (
                 <>
                   <NavLink
-                    to="/"
-                    end
+                    to="/student/dashboard"
                     className={({ isActive }) =>
                       `rounded-md px-3 py-2 text-sm font-medium ${navLinkClass(isActive)}`
                     }
                   >
-                    Home
+                    Dashboard
                   </NavLink>
                   <NavLink
                     to="/jobs"
@@ -202,13 +204,12 @@ export default function Navbar() {
             {!loading && user?.role === "recruiter" && (
                 <>
                   <NavLink
-                    to="/"
-                    end
+                    to="/recruiter/dashboard"
                     className={({ isActive }) =>
                       `rounded-md px-3 py-2 text-sm font-medium ${navLinkClass(isActive)}`
                     }
                   >
-                    Home
+                    Dashboard
                   </NavLink>
                   <NavLink
                     to="/recruiter/jobs"
@@ -392,8 +393,8 @@ export default function Navbar() {
 
             {!loading && user?.role === "student" && (
               <>
-                <MobileNavLink to="/" onNavigate={() => setMobileOpen(false)} end>
-                  Home
+                <MobileNavLink to="/student/dashboard" onNavigate={() => setMobileOpen(false)}>
+                  Dashboard
                 </MobileNavLink>
                 <MobileNavLink to="/jobs" onNavigate={() => setMobileOpen(false)}>
                   Browse Jobs
@@ -427,17 +428,14 @@ export default function Navbar() {
 
             {!loading && user?.role === "recruiter" && (
               <>
-                <MobileNavLink to="/" onNavigate={() => setMobileOpen(false)} end>
-                  Home
+                <MobileNavLink to="/recruiter/dashboard" onNavigate={() => setMobileOpen(false)}>
+                  Dashboard
                 </MobileNavLink>
                 <MobileNavLink to="/recruiter/jobs" onNavigate={() => setMobileOpen(false)}>
                   My Listings
                 </MobileNavLink>
                 <MobileNavLink to="/recruiter/jobs/new" onNavigate={() => setMobileOpen(false)}>
                   Post a Job
-                </MobileNavLink>
-                <MobileNavLink to="/recruiter/dashboard" onNavigate={() => setMobileOpen(false)} end>
-                  Dashboard
                 </MobileNavLink>
                 <div className="border-t border-slate-100 pt-2 mt-2">
                   <MobileNavLink to={profileHref} onNavigate={() => setMobileOpen(false)} end>

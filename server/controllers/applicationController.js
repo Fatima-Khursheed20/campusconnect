@@ -48,7 +48,8 @@ const applyForJob = async (req, res) => {
     const application = await Application.create({
       job: jobId,
       applicant: req.user._id,
-      ...req.body,
+      coverLetter: req.body.coverLetter,
+      resumeUrl: req.body.resumeUrl,
     });
 
     // Add application to job's applicants array

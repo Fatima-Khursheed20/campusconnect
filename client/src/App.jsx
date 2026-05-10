@@ -86,6 +86,7 @@ function AppContent() {
             <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
             <Route path="/recruiter/jobs" element={<RecruiterJobs />} />
             <Route path="/recruiter/jobs/new" element={<NewJob />} />
+            <Route path="/recruiter/jobs/:id/edit" element={<NewJob />} />
             <Route path="/recruiter/jobs/:id/applicants" element={<JobApplicants />} />
           </Route>
 

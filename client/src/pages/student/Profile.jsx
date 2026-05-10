@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import useAuth from "../../hooks/useAuth";
 import { resolveUploadUrl } from "../../utils/resolveUploadUrl";
+import { sanitizeUserInput, sanitizeText } from "../../utils/sanitize";
 import LazyImage from "../../components/common/LazyImage";
 
 function normalizeEducation(eduList) {
@@ -46,15 +47,18 @@ function Profile() {
   }, [setUser]);
 
   useEffect(() => {
-    if (!user) return;
-    setName(user.name || "");
-    setBio(user.bio || "");
-    setSkills(user.skills?.length ? [...user.skills] : []);
-    setEducation(normalizeEducation(user.education));
+    if (!user) return undefined;
+    const t = window.setTimeout(() => {
+      setName(user.name || "");
+      setBio(user.bio || "");
+      setSkills(user.skills?.length ? [...user.skills] : []);
+      setEducation(normalizeEducation(user.education));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [user]);
 
   const addSkill = () => {
-    const s = skillInput.trim();
+    const s = sanitizeText(skillInput.trim());
     if (!s || skills.includes(s)) return;
     setSkills((prev) => [...prev, s]);
     setSkillInput("");
@@ -87,16 +91,18 @@ function Profile() {
     setMessage(null);
     try {
       const payload = {
-        name,
-        bio,
-        skills,
+        name: sanitizeText(name),
+        bio: sanitizeUserInput(bio, 1000),
+        skills: skills.map((skill) => sanitizeText(skill)).filter(Boolean),
         education: education
           .map((row) => ({
-            institution: row.school?.trim(),
-            degree: row.degree?.trim(),
-            grade: row.year?.toString().trim() || "",
+            institution: sanitizeText(row.school?.trim()),
+            degree: sanitizeText(row.degree?.trim()),
+            grade: sanitizeText(row.year?.trim()),
+            fieldOfStudy: sanitizeText(row.fieldOfStudy?.trim()),
+            description: sanitizeUserInput(row.description?.trim(), 500),
           }))
-          .filter((row) => row.institution || row.degree || row.grade),
+          .filter(Boolean),
       };
       const { data } = await api.put("/users/profile", payload);
       setUser(data.user);

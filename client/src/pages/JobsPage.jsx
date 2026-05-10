@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../services/api";
 import { getTypeBadgeClasses } from "../utils/jobDisplay";
@@ -23,40 +23,48 @@ function JobsPage() {
   useEffect(() => {
     const loc = searchParams.get("location");
     const q = searchParams.get("search");
-    if (loc !== null || q !== null) {
+    if (loc === null && q === null) return undefined;
+    const t = window.setTimeout(() => {
       setFilters((prev) => ({
         ...prev,
         ...(loc !== null ? { location: loc } : {}),
         ...(q !== null ? { search: q } : {}),
       }));
-    }
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [searchParams]);
 
-  const fetchJobs = async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page,
-        limit: pagination.limit,
-        ...Object.fromEntries(
-          Object.entries(filters).filter(([_, value]) => value.trim() !== "")
-        ),
-      });
+  const fetchJobs = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page,
+          limit: pagination.limit,
+          ...Object.fromEntries(
+            Object.entries(filters).filter(([, value]) => value.trim() !== "")
+          ),
+        });
 
-      const response = await api.get(`/jobs?${params}`);
-      setJobs(response.data.jobs);
-      setPagination(response.data.pagination);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch jobs");
-    } finally {
-      setLoading(false);
-    }
-  };
+        const response = await api.get(`/jobs?${params}`);
+        setJobs(response.data.jobs);
+        setPagination(response.data.pagination);
+        setError(null);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch jobs");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, pagination.limit]
+  );
 
   useEffect(() => {
-    fetchJobs();
-  }, [filters]);
+    const t = window.setTimeout(() => {
+      void fetchJobs();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [fetchJobs]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));

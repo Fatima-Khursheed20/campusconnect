@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import useForm from "../hooks/useForm";
@@ -36,6 +36,7 @@ function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [serverError, setServerError] = useState("");
+  const setErrorsRef = useRef(() => {});
 
   const validate = (values) => {
     const errors = {};
@@ -61,35 +62,38 @@ function Register() {
     return errors;
   };
 
-  const handleRegister = async (formValues) => {
-    setServerError("");
-    try {
-      const payload = {
-        name: formValues.name.trim(),
-        email: formValues.email.trim(),
-        password: formValues.password,
-        role: formValues.role,
-      };
+  const handleRegister = useCallback(
+    async (formValues) => {
+      setServerError("");
+      try {
+        const payload = {
+          name: formValues.name.trim(),
+          email: formValues.email.trim(),
+          password: formValues.password,
+          role: formValues.role,
+        };
 
-      if (formValues.role === "recruiter") {
-        payload.companyName = formValues.companyName.trim();
-      }
+        if (formValues.role === "recruiter") {
+          payload.companyName = formValues.companyName.trim();
+        }
 
-      await register(payload);
-      navigate("/login", { state: { message: "Registration successful! Please log in." } });
-    } catch (error) {
-      const message = error.response?.data?.message || "Registration failed. Please try again.";
-      if (error.response?.data?.errors) {
-        // Set field-specific errors returned from the new validation middleware
-        const fieldErrors = error.response.data.errors.reduce((acc, err) => {
-          acc[err.field] = err.message;
-          return acc;
-        }, {});
-        setErrors(fieldErrors);
+        await register(payload);
+        navigate("/login", { state: { message: "Registration successful! Please log in." } });
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "Registration failed. Please try again.";
+        if (error.response?.data?.errors) {
+          const fieldErrors = error.response.data.errors.reduce((acc, errItem) => {
+            acc[errItem.field] = errItem.message;
+            return acc;
+          }, {});
+          setErrorsRef.current(fieldErrors);
+        }
+        setServerError(message);
       }
-      setServerError(message);
-    }
-  };
+    },
+    [register, navigate]
+  );
 
   const {
     values,
@@ -99,6 +103,10 @@ function Register() {
     handleSubmit,
     setErrors,
   } = useForm(initialFormState, validate, handleRegister);
+
+  useEffect(() => {
+    setErrorsRef.current = setErrors;
+  }, [setErrors]);
 
   const strength = useMemo(
     () => getPasswordStrength(values.password),

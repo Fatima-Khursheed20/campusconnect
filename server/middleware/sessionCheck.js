@@ -1,23 +1,36 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const signToken = (userId, rememberMe = false) => {
-  const expiresIn = rememberMe ? '7d' : '24h';
+  const expiresIn = rememberMe ? "7d" : "24h";
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn });
 };
 
 const getCookieOptions = (rememberMe = false) => {
-    const maxAge = rememberMe
-      ? 7 * 24 * 60 * 60 * 1000 // 7 days
-      : 24 * 60 * 60 * 1000; // 24 hours
-  
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge,
-    };
-  };
+  const isProduction = process.env.NODE_ENV === "production";
+  const maxAge = rememberMe
+    ? 7 * 24 * 60 * 60 * 1000
+    : 24 * 60 * 60 * 1000;
 
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge,
+  };
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
+};
+
+/**
+ * Sliding refresh: only when JWT signature is valid AND not yet expired,
+ * and exp is within 5 minutes. Expired or malformed tokens clear the cookie.
+ */
 const sessionCheck = (req, res, next) => {
   const token = req.cookies.token;
 
@@ -26,20 +39,21 @@ const sessionCheck = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const now = Date.now() / 1000;
     const fiveMinutes = 5 * 60;
 
-    // If token is within 5 minutes of expiring, refresh it
     if (decoded.exp - now < fiveMinutes) {
-      const rememberMe = (decoded.exp - decoded.iat) > (24 * 60 * 60); // Check if it was a "remember me" token
+      const rememberMe =
+        decoded.exp - decoded.iat > 24 * 60 * 60;
       const newToken = signToken(decoded.id, rememberMe);
       const cookieOptions = getCookieOptions(rememberMe);
-      res.cookie('token', newToken, cookieOptions);
+      res.cookie("token", newToken, cookieOptions);
       req.cookies.token = newToken;
     }
   } catch (error) {
-    // If token is invalid, just proceed. The verifyToken middleware will catch it.
+    clearAuthCookie(res);
+    req.cookies.token = undefined;
   }
 
   next();

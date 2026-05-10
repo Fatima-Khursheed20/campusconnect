@@ -47,10 +47,13 @@ function RecruiterDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    const t = window.setTimeout(() => {
+      void fetchDashboardData();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
-  const handleToggleJobStatus = async (jobId, currentStatus) => {
+  const handleToggleJobStatus = async (jobId) => {
     try {
       await api.patch(`/jobs/${jobId}/toggle`);
       // Refresh data
@@ -358,9 +361,7 @@ function RecruiterDashboard() {
                                 Edit
                               </Link>
                               <button
-                                onClick={() =>
-                                  handleToggleJobStatus(job._id, job.isActive)
-                                }
+                                onClick={() => handleToggleJobStatus(job._id)}
                                 className={`${
                                   job.isActive
                                     ? "text-red-600 hover:text-red-900"

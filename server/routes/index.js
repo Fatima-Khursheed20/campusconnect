@@ -7,6 +7,7 @@ const userRoutes = require("./userRoutes");
 const bookmarkRoutes = require("./bookmarkRoutes");
 const contactRoutes = require("./contactRoutes");
 const sessionCheck = require("../middleware/sessionCheck");
+const { csrfProtection, csrfTokenMiddleware, getCsrfToken } = require("../middleware/csrf");
 
 const router = express.Router();
 
@@ -16,12 +17,17 @@ router.use(sessionCheck);
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", message: "CampusConnect API healthy" });
 });
+
+// CSRF token endpoint
+router.get("/csrf-token", csrfTokenMiddleware, getCsrfToken);
+
+// Apply CSRF protection to state-changing routes
 router.use("/auth", authRoutes);
-router.use("/admin", adminRoutes);
-router.use("/jobs", jobRoutes);
-router.use("/applications", applicationRoutes);
-router.use("/users", userRoutes);
-router.use("/bookmarks", bookmarkRoutes);
-router.use("/contact", contactRoutes);
+router.use("/admin", csrfProtection, adminRoutes);
+router.use("/jobs", csrfProtection, jobRoutes);
+router.use("/applications", csrfProtection, applicationRoutes);
+router.use("/users", csrfProtection, userRoutes);
+router.use("/bookmarks", csrfProtection, bookmarkRoutes);
+router.use("/contact", csrfProtection, contactRoutes);
 
 module.exports = router;
