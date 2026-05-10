@@ -22,6 +22,11 @@ try {
 
 const app = express();
 
+/** Vercel & proxies: needed for correct client IP (rate limit) and optional secure cookies */
+if (process.env.VERCEL) {
+  app.set("trust proxy", 1);
+}
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
@@ -68,6 +73,18 @@ console.log(
   `[CORS] NODE_ENV=${process.env.NODE_ENV || "(unset)"} allowLocalhost=${allowLocalhostOrigins} origins=${clientOrigins.join(" | ")}`
 );
 
+if (
+  process.env.VERCEL &&
+  process.env.CORS_ALLOW_VERCEL_APP_HOSTS !== "true" &&
+  !normalizeOrigin(process.env.CLIENT_URL) &&
+  !normalizeOrigin(process.env.FRONTEND_URL) &&
+  !(process.env.CLIENT_URLS && process.env.CLIENT_URLS.trim())
+) {
+  console.warn(
+    "[CORS] No CLIENT_URL / FRONTEND_URL / CLIENT_URLS set on Vercel — cross-origin browser calls will fail unless you set one of them or CORS_ALLOW_VERCEL_APP_HOSTS=true"
+  );
+}
+
 /**
  * Explicit CORS (no `cors` package) so Access-Control-Allow-Origin always matches
  * the browser's Origin (e.g. http://localhost:5174) when allowed.
@@ -80,6 +97,15 @@ const resolveAllowedOrigin = (req) => {
   const origin = normalizeOrigin(raw);
   if (clientOriginSet.has(origin)) {
     return origin;
+  }
+  /**
+   * Dev / class projects: allow any *.vercel.app frontend without listing every preview URL.
+   * Set CORS_ALLOW_VERCEL_APP_HOSTS=true on the API. Prefer CLIENT_URL / CLIENT_URLS in production.
+   */
+  if (process.env.CORS_ALLOW_VERCEL_APP_HOSTS === "true") {
+    if (/^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) {
+      return origin;
+    }
   }
   if (
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
