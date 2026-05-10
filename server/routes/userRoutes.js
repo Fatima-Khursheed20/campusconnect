@@ -1,25 +1,10 @@
 const express = require("express");
 const { body } = require("express-validator");
 const { verifyToken, checkRole } = require("../middleware/auth");
-const { resumeUpload, profilePictureUpload } = require("../middleware/studentUploads");
-
-const withResumeUpload = (req, res, next) => {
-  resumeUpload.single("resume")(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ message: err.message || "Resume upload failed" });
-    }
-    return next();
-  });
-};
-
-const withProfilePictureUpload = (req, res, next) => {
-  profilePictureUpload.single("profilePicture")(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ message: err.message || "Image upload failed" });
-    }
-    return next();
-  });
-};
+const {
+  withResumeUpload,
+  withProfilePictureUpload,
+} = require("../middleware/studentUploads");
 const {
   updateProfile,
   uploadResumeHandler,

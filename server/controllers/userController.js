@@ -1,5 +1,25 @@
 const { validationResult } = require("express-validator");
 const User = require("../models/User");
+const { putPublicFile } = require("../utils/blobUpload");
+const {
+  buildResumeStoredName,
+  buildProfilePictureStoredName,
+} = require("../middleware/studentUploads");
+
+const storedUrlFromFile = async (req, kind) => {
+  if (req.file.buffer && Buffer.isBuffer(req.file.buffer)) {
+    const pathname =
+      kind === "resume"
+        ? `resumes/${buildResumeStoredName(req, req.file)}`
+        : `profile-pictures/${buildProfilePictureStoredName(req, req.file)}`;
+    const blob = await putPublicFile(pathname, req.file.buffer, {
+      contentType: req.file.mimetype,
+    });
+    return blob.url;
+  }
+  const subdir = kind === "resume" ? "resumes" : "profile-pictures";
+  return `/uploads/${subdir}/${req.file.filename}`;
+};
 
 const sendValidationError = (res, errors) =>
   res.status(400).json({
@@ -68,7 +88,16 @@ const uploadResumeHandler = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const resumeUrl = `/uploads/resumes/${req.file.filename}`;
+    let resumeUrl;
+    try {
+      resumeUrl = await storedUrlFromFile(req, "resume");
+    } catch (e) {
+      if (e.code === "NO_BLOB_TOKEN") {
+        return res.status(503).json({ message: e.message });
+      }
+      console.error("[user] upload resume:", e);
+      return res.status(500).json({ message: "Failed to upload resume" });
+    }
     user.resumeUrl = resumeUrl;
     await user.save();
 
@@ -94,7 +123,16 @@ const uploadProfilePictureHandler = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
+    let profilePicture;
+    try {
+      profilePicture = await storedUrlFromFile(req, "profile");
+    } catch (e) {
+      if (e.code === "NO_BLOB_TOKEN") {
+        return res.status(503).json({ message: e.message });
+      }
+      console.error("[user] upload profile picture:", e);
+      return res.status(500).json({ message: "Failed to upload profile picture" });
+    }
     user.profilePicture = profilePicture;
     await user.save();
 

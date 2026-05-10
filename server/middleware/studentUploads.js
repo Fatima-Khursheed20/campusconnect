@@ -1,17 +1,26 @@
 const path = require("path");
 const multer = require("multer");
 const { resumeDir, profilePictureDir } = require("../utils/ensureUploadDirs");
+const { usesServerlessFileStorage } = require("../utils/serverlessFiles");
 
 const sanitizeFilename = (original) => {
   if (!original) return "file";
-  
-  // Check if filename is too long before processing
+
   if (original.length > 200) {
     throw new Error("Filename too long. Maximum 200 characters allowed.");
   }
-  
-  // Sanitize and limit to 180 characters
+
   return original.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+};
+
+const buildResumeStoredName = (req, file) => {
+  const base = sanitizeFilename(file.originalname || "resume.pdf");
+  return `${req.user._id}-${Date.now()}-${base}`;
+};
+
+const buildProfilePictureStoredName = (req, file) => {
+  const ext = path.extname(file.originalname || "") || ".jpg";
+  return `${req.user._id}-${Date.now()}${ext}`;
 };
 
 const resumeStorage = multer.diskStorage({
@@ -19,8 +28,11 @@ const resumeStorage = multer.diskStorage({
     cb(null, resumeDir);
   },
   filename: (req, file, cb) => {
-    const base = sanitizeFilename(file.originalname || "resume.pdf");
-    cb(null, `${req.user._id}-${Date.now()}-${base}`);
+    try {
+      cb(null, buildResumeStoredName(req, file));
+    } catch (e) {
+      cb(e);
+    }
   },
 });
 
@@ -29,21 +41,57 @@ const profilePictureStorage = multer.diskStorage({
     cb(null, profilePictureDir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "") || ".jpg";
-    cb(null, `${req.user._id}-${Date.now()}${ext}`);
+    try {
+      cb(null, buildProfilePictureStoredName(req, file));
+    } catch (e) {
+      cb(e);
+    }
   },
 });
 
-const resumeUpload = multer({
+const memoryStorage = multer.memoryStorage();
+
+const resumeFileFilter = (_req, file, cb) => {
+  if (file.mimetype === "application/pdf") {
+    return cb(null, true);
+  }
+  return cb(new Error("Only PDF resumes are allowed"));
+};
+
+const profilePictureFileFilter = (_req, file, cb) => {
+  if (["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.mimetype)) {
+    return cb(null, true);
+  }
+  return cb(new Error("Only JPEG, PNG, WebP, or GIF images are allowed"));
+};
+
+const resumeUploadDisk = multer({
   storage: resumeStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "application/pdf") {
-      return cb(null, true);
-    }
-    return cb(new Error("Only PDF resumes are allowed"));
-  },
+  fileFilter: resumeFileFilter,
 });
+
+const resumeUploadMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: resumeFileFilter,
+});
+
+const profilePictureUploadDisk = multer({
+  storage: profilePictureStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: profilePictureFileFilter,
+});
+
+const profilePictureUploadMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: profilePictureFileFilter,
+});
+
+const serverless = usesServerlessFileStorage();
+const resumeUpload = serverless ? resumeUploadMemory : resumeUploadDisk;
+const profilePictureUpload = serverless ? profilePictureUploadMemory : profilePictureUploadDisk;
 
 const withResumeUpload = (req, res, next) => {
   resumeUpload.single("resume")(req, res, (err) => {
@@ -57,17 +105,6 @@ const withResumeUpload = (req, res, next) => {
     return next();
   });
 };
-
-const profilePictureUpload = multer({
-  storage: profilePictureStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.mimetype)) {
-      return cb(null, true);
-    }
-    return cb(new Error("Only JPEG, PNG, WebP, or GIF images are allowed"));
-  },
-});
 
 const withProfilePictureUpload = (req, res, next) => {
   profilePictureUpload.single("profilePicture")(req, res, (err) => {
@@ -87,4 +124,6 @@ module.exports = {
   profilePictureUpload,
   withResumeUpload,
   withProfilePictureUpload,
+  buildResumeStoredName,
+  buildProfilePictureStoredName,
 };
