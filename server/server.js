@@ -11,7 +11,14 @@ const { ensureUploadDirs } = require("./utils/ensureUploadDirs");
 
 dotenv.config();
 
-ensureUploadDirs();
+try {
+  ensureUploadDirs();
+} catch (e) {
+  console.warn(
+    "[uploads] Skipped or failed creating upload dirs (common on serverless read-only fs):",
+    e.message
+  );
+}
 
 const app = express();
 
@@ -179,6 +186,10 @@ const startServer = async () => {
 
 if (require.main === module) {
   startServer();
+} else if (process.env.VERCEL) {
+  void connectDB().catch((err) =>
+    console.error("[db] Serverless DB connection:", err.message)
+  );
 }
 
 module.exports = app;

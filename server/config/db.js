@@ -1,8 +1,16 @@
 const mongoose = require("mongoose");
 
+const getMongoUri = () =>
+  process.env.MONGO_URI || process.env.MONGODB_URI;
+
 const connectDB = async () => {
+  const uri = getMongoUri();
+  if (!uri) {
+    console.error("MongoDB: set MONGO_URI or MONGODB_URI in environment");
+    throw new Error("Missing MONGO_URI / MONGODB_URI");
+  }
   try {
-    const connection = await mongoose.connect(process.env.MONGO_URI, {
+    const connection = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s
       maxPoolSize: 10, // Maintain up to 10 socket connections
       family: 4 // Use IPv4, skip trying IPv6
