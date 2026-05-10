@@ -6,6 +6,7 @@ const compression = require("compression");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
+const { ensureDbConnected } = connectDB;
 const apiRoutes = require("./routes");
 const { ensureUploadDirs } = require("./utils/ensureUploadDirs");
 
@@ -158,6 +159,23 @@ app.use((req, res, next) => {
   next();
 });
 
+/** Vercel serverless: wait for MongoDB before handling requests (connect() is async). */
+app.use(async (req, res, next) => {
+  if (!process.env.VERCEL) {
+    return next();
+  }
+  try {
+    await ensureDbConnected();
+    return next();
+  } catch (err) {
+    console.error("[db] ensureDbConnected:", err.message);
+    return res.status(503).json({
+      message:
+        "Database unavailable. Set MONGO_URI on Vercel and allow Atlas access from 0.0.0.0/0.",
+    });
+  }
+});
+
 // Security and Performance Middleware (after CORS so preflight is handled first)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -226,10 +244,6 @@ const startServer = async () => {
 
 if (require.main === module) {
   startServer();
-} else if (process.env.VERCEL) {
-  void connectDB().catch((err) =>
-    console.error("[db] Serverless DB connection:", err.message)
-  );
 }
 
 module.exports = app;
