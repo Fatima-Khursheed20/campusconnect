@@ -12,11 +12,17 @@ const getMongoUri = () => {
   return s;
 };
 
-const connectOptions = () => ({
-  serverSelectionTimeoutMS: process.env.VERCEL ? 15000 : 5000,
-  maxPoolSize: 10,
-  family: 4,
-});
+const connectOptions = () => {
+  const opts = {
+    serverSelectionTimeoutMS: process.env.VERCEL ? 20000 : 5000,
+    maxPoolSize: 10,
+  };
+  /** Forcing IPv4 breaks many cloud ↔ Atlas paths; opt in locally if needed. */
+  if (process.env.MONGOOSE_IPV4_ONLY === "true") {
+    opts.family = 4;
+  }
+  return opts;
+};
 
 let listenersRegistered = false;
 
