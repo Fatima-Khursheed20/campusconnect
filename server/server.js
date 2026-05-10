@@ -86,13 +86,14 @@ console.log(
 
 if (
   process.env.VERCEL &&
+  !envTruthy(process.env.CORS_STRICT_ORIGINS) &&
   !envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS) &&
   !normalizeOrigin(process.env.CLIENT_URL) &&
   !normalizeOrigin(process.env.FRONTEND_URL) &&
   !(process.env.CLIENT_URLS && process.env.CLIENT_URLS.trim())
 ) {
   console.warn(
-    "[CORS] No CLIENT_URL / FRONTEND_URL / CLIENT_URLS set on Vercel — cross-origin browser calls will fail unless you set one of them or CORS_ALLOW_VERCEL_APP_HOSTS=true"
+    "[CORS] API on Vercel: allowing any https://*.vercel.app origin (classroom default). Set CLIENT_URL for a single origin, or CORS_STRICT_ORIGINS=true to allow only CLIENT_URL / CLIENT_URLS."
   );
 }
 
@@ -110,13 +111,14 @@ const resolveAllowedOrigin = (req) => {
     return origin;
   }
   /**
-   * Dev / class projects: allow any *.vercel.app frontend without listing every preview URL.
-   * Set CORS_ALLOW_VERCEL_APP_HOSTS=true on the API. Prefer CLIENT_URL / CLIENT_URLS in production.
+   * Any *.vercel.app (typical Vercel frontend): allow if explicitly enabled OR
+   * API runs on Vercel and not locked down with CORS_STRICT_ORIGINS=true.
    */
-  if (envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS)) {
-    if (/^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) {
-      return origin;
-    }
+  const allowVercelAppHost =
+    envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS) ||
+    (process.env.VERCEL && !envTruthy(process.env.CORS_STRICT_ORIGINS));
+  if (allowVercelAppHost && /^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) {
+    return origin;
   }
   if (
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
