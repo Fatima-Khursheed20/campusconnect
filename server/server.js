@@ -51,6 +51,10 @@ const parseClientOrigins = () => {
   if (single) {
     out.add(single);
   }
+  const front = normalizeOrigin(process.env.FRONTEND_URL);
+  if (front) {
+    out.add(front);
+  }
   if (out.size === 0) {
     out.add("http://localhost:5173");
   }
