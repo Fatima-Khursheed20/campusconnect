@@ -38,8 +38,18 @@ const limiter = rateLimit({
 /** Any http://localhost:* / 127.0.0.1:* — set CORS_STRICT_LOCALHOST=true to turn off (e.g. hardened prod). */
 const allowLocalhostOrigins = process.env.CORS_STRICT_LOCALHOST !== "true";
 
-const normalizeOrigin = (value) =>
-  (value || "").trim().replace(/\/$/, "");
+const normalizeOrigin = (value) => {
+  let s = (value || "").trim().replace(/\/$/, "");
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim().replace(/\/$/, "");
+  }
+  return s;
+};
+
+const envTruthy = (v) => /^(1|true|yes)$/i.test(String(v ?? "").trim());
 
 /** Allowed browser origins for credentialed CORS (cookies, CSRF) */
 const parseClientOrigins = () => {
@@ -75,7 +85,7 @@ console.log(
 
 if (
   process.env.VERCEL &&
-  process.env.CORS_ALLOW_VERCEL_APP_HOSTS !== "true" &&
+  !envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS) &&
   !normalizeOrigin(process.env.CLIENT_URL) &&
   !normalizeOrigin(process.env.FRONTEND_URL) &&
   !(process.env.CLIENT_URLS && process.env.CLIENT_URLS.trim())
@@ -102,7 +112,7 @@ const resolveAllowedOrigin = (req) => {
    * Dev / class projects: allow any *.vercel.app frontend without listing every preview URL.
    * Set CORS_ALLOW_VERCEL_APP_HOSTS=true on the API. Prefer CLIENT_URL / CLIENT_URLS in production.
    */
-  if (process.env.CORS_ALLOW_VERCEL_APP_HOSTS === "true") {
+  if (envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS)) {
     if (/^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) {
       return origin;
     }
