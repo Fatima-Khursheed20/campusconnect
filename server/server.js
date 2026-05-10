@@ -1,5 +1,6 @@
 const path = require("path");
 const express = require("express");
+const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
@@ -23,8 +24,14 @@ try {
 
 const app = express();
 
+const envTruthy = (v) => /^(1|true|yes)$/i.test(String(v ?? "").trim());
+
+/** True on Vercel serverless; VERCEL_URL is set even if VERCEL is missing in some setups */
+const isVercelRuntime =
+  envTruthy(process.env.VERCEL) || Boolean(String(process.env.VERCEL_URL || "").trim());
+
 /** Vercel & proxies: needed for correct client IP (rate limit) and optional secure cookies */
-if (process.env.VERCEL) {
+if (isVercelRuntime) {
   app.set("trust proxy", 1);
 }
 
@@ -49,8 +56,6 @@ const normalizeOrigin = (value) => {
   }
   return s;
 };
-
-const envTruthy = (v) => /^(1|true|yes)$/i.test(String(v ?? "").trim());
 
 /** Allowed browser origins for credentialed CORS (cookies, CSRF) */
 const parseClientOrigins = () => {
@@ -85,7 +90,7 @@ console.log(
 );
 
 if (
-  process.env.VERCEL &&
+  isVercelRuntime &&
   !envTruthy(process.env.CORS_STRICT_ORIGINS) &&
   !envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS) &&
   !normalizeOrigin(process.env.CLIENT_URL) &&
@@ -98,11 +103,10 @@ if (
 }
 
 /**
- * Explicit CORS (no `cors` package) so Access-Control-Allow-Origin always matches
- * the browser's Origin (e.g. http://localhost:5174) when allowed.
+ * CORS: dynamic reflect of allowed Origin (credentialed requests need an exact ACAO match).
+ * Omitting `allowedHeaders` mirrors Access-Control-Request-Headers on preflight (cors default).
  */
-const resolveAllowedOrigin = (req) => {
-  const raw = req.headers.origin;
+const resolveAllowedOriginValue = (raw) => {
   if (!raw || raw === "null") {
     return null;
   }
@@ -110,19 +114,13 @@ const resolveAllowedOrigin = (req) => {
   if (clientOriginSet.has(origin)) {
     return origin;
   }
-  /**
-   * Any *.vercel.app (typical Vercel frontend): allow if explicitly enabled OR
-   * API runs on Vercel and not locked down with CORS_STRICT_ORIGINS=true.
-   */
   const allowVercelAppHost =
     envTruthy(process.env.CORS_ALLOW_VERCEL_APP_HOSTS) ||
-    (process.env.VERCEL && !envTruthy(process.env.CORS_STRICT_ORIGINS));
+    (isVercelRuntime && !envTruthy(process.env.CORS_STRICT_ORIGINS));
   if (allowVercelAppHost && /^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) {
     return origin;
   }
-  if (
-    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
-  ) {
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
     if (allowLocalhostOrigins) {
       return origin;
     }
@@ -133,37 +131,25 @@ const resolveAllowedOrigin = (req) => {
   return null;
 };
 
-app.use((req, res, next) => {
-  const allowed = resolveAllowedOrigin(req);
-  if (allowed) {
-    res.setHeader("Access-Control-Allow-Origin", allowed);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
-  res.append("Vary", "Origin");
-
-  if (req.method === "OPTIONS") {
-    if (allowed) {
-      res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
-      );
-      const requested = req.headers["access-control-request-headers"];
-      res.setHeader(
-        "Access-Control-Allow-Headers",
-        requested ||
-          "Content-Type, X-CSRF-Token, Authorization, X-Requested-With"
-      );
-      res.setHeader("Access-Control-Max-Age", "86400");
-    }
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+app.use(
+  cors({
+    origin(originHeader, callback) {
+      if (!originHeader) {
+        return callback(null, true);
+      }
+      const allowed = resolveAllowedOriginValue(originHeader);
+      return callback(null, allowed || false);
+    },
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    maxAge: 86400,
+    optionsSuccessStatus: 204,
+  })
+);
 
 /** Vercel serverless: wait for MongoDB before handling requests (connect() is async). */
 app.use(async (req, res, next) => {
-  if (!process.env.VERCEL) {
+  if (!isVercelRuntime) {
     return next();
   }
   try {
