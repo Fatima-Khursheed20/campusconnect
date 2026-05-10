@@ -65,15 +65,19 @@ const profilePictureFileFilter = (_req, file, cb) => {
   return cb(new Error("Only JPEG, PNG, WebP, or GIF images are allowed"));
 };
 
+/** Vercel serverless request body is capped (~4.5 MB); leave margin for multipart overhead */
+const resumeMaxBytesDisk = 5 * 1024 * 1024;
+const resumeMaxBytesServerless = 4 * 1024 * 1024;
+
 const resumeUploadDisk = multer({
   storage: resumeStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: resumeMaxBytesDisk },
   fileFilter: resumeFileFilter,
 });
 
 const resumeUploadMemory = multer({
   storage: memoryStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: resumeMaxBytesServerless },
   fileFilter: resumeFileFilter,
 });
 

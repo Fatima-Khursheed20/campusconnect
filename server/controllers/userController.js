@@ -21,6 +21,35 @@ const storedUrlFromFile = async (req, kind) => {
   return `/uploads/${subdir}/${req.file.filename}`;
 };
 
+const isLikelyBlobError = (e) => {
+  if (!e) return false;
+  if (typeof e.name === "string" && e.name.includes("Blob")) return true;
+  return /blob|vercel-storage|BLOB_/i.test(String(e.message || ""));
+};
+
+const mapUploadError = (res, e, action) => {
+  const fallbackMessage =
+    action === "resume" ? "Failed to upload resume" : "Failed to upload profile picture";
+
+  if (e.code === "NO_BLOB_TOKEN") {
+    return res.status(503).json({ message: e.message });
+  }
+  if (isLikelyBlobError(e)) {
+    return res.status(502).json({
+      message:
+        e.message ||
+        "File storage rejected the upload. Check BLOB_READ_WRITE_TOKEN and that a Blob store is linked to this Vercel project.",
+    });
+  }
+  console.error(`[user] upload ${action}:`, e);
+  const expose =
+    process.env.NODE_ENV !== "production" || process.env.SHOW_UPLOAD_ERRORS === "true";
+  return res.status(500).json({
+    message: fallbackMessage,
+    ...(expose && e.message ? { detail: e.message } : {}),
+  });
+};
+
 const sendValidationError = (res, errors) =>
   res.status(400).json({
     message: "Validation failed",
@@ -92,11 +121,7 @@ const uploadResumeHandler = async (req, res) => {
     try {
       resumeUrl = await storedUrlFromFile(req, "resume");
     } catch (e) {
-      if (e.code === "NO_BLOB_TOKEN") {
-        return res.status(503).json({ message: e.message });
-      }
-      console.error("[user] upload resume:", e);
-      return res.status(500).json({ message: "Failed to upload resume" });
+      return mapUploadError(res, e, "resume");
     }
     user.resumeUrl = resumeUrl;
     await user.save();
@@ -108,6 +133,7 @@ const uploadResumeHandler = async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
+    console.error("[user] upload resume (unexpected):", error);
     return res.status(500).json({ message: "Failed to upload resume" });
   }
 };
@@ -127,11 +153,7 @@ const uploadProfilePictureHandler = async (req, res) => {
     try {
       profilePicture = await storedUrlFromFile(req, "profile");
     } catch (e) {
-      if (e.code === "NO_BLOB_TOKEN") {
-        return res.status(503).json({ message: e.message });
-      }
-      console.error("[user] upload profile picture:", e);
-      return res.status(500).json({ message: "Failed to upload profile picture" });
+      return mapUploadError(res, e, "profile");
     }
     user.profilePicture = profilePicture;
     await user.save();
@@ -143,6 +165,7 @@ const uploadProfilePictureHandler = async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
+    console.error("[user] upload profile picture (unexpected):", error);
     return res.status(500).json({ message: "Failed to upload profile picture" });
   }
 };
