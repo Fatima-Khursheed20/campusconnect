@@ -7,7 +7,7 @@ const userRoutes = require("./userRoutes");
 const bookmarkRoutes = require("./bookmarkRoutes");
 const contactRoutes = require("./contactRoutes");
 const sessionCheck = require("../middleware/sessionCheck");
-const { csrfProtection, csrfTokenMiddleware, getCsrfToken } = require("../middleware/csrf");
+const { csrfProtection, getCsrfToken } = require("../middleware/csrf");
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ router.get("/health", (req, res) => {
 });
 
 // CSRF token endpoint
-router.get("/csrf-token", csrfTokenMiddleware, getCsrfToken);
+router.get("/csrf-token", getCsrfToken);
 
 // Apply CSRF protection to state-changing routes
 router.use("/auth", authRoutes);

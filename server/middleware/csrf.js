@@ -32,27 +32,15 @@ const verifyCSRFToken = (req, res, next) => {
   next();
 };
 
-// Middleware to set CSRF token cookie
-const csrfTokenMiddleware = (req, res, next) => {
-  // Generate new token if not present
-  if (!req.cookies?.['_csrf']) {
-    const token = generateCSRFToken();
-    res.cookie('_csrf', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    });
-  }
-  next();
-};
-
-// Route to get CSRF token for client-side requests
+/**
+ * Single handler for GET /csrf-token: one token value for both Set-Cookie and JSON body.
+ * Do not stack a second middleware that also generates a token — the incoming request
+ * never carries the cookie yet, so two generators would emit mismatched cookies vs body.
+ */
 const getCsrfToken = (req, res) => {
   try {
     const token = req.cookies?.['_csrf'] || generateCSRFToken();
-    
-    // Set cookie if not present
+
     if (!req.cookies?.['_csrf']) {
       res.cookie('_csrf', token, {
         httpOnly: true,
@@ -61,7 +49,7 @@ const getCsrfToken = (req, res) => {
         maxAge: 24 * 60 * 60 * 1000,
       });
     }
-    
+
     res.json({ csrfToken: token });
   } catch (error) {
     res.status(500).json({ message: 'Failed to generate CSRF token' });
@@ -73,6 +61,5 @@ const csrfProtection = verifyCSRFToken;
 
 module.exports = {
   csrfProtection,
-  csrfTokenMiddleware,
   getCsrfToken,
 };

@@ -26,10 +26,8 @@ api.interceptors.request.use((config) => {
   const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method?.toUpperCase());
   
   if (isStateChanging && !isAuthRoute) {
-    config.headers = {
-      ...config.headers,
-      ...addCsrfToHeaders(),
-    };
+    const csrfHeaders = addCsrfToHeaders();
+    Object.assign(config.headers, csrfHeaders);
   }
   return config;
 });
